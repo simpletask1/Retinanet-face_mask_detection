@@ -2,11 +2,12 @@
 pytorch implementation of Retinanet for face mask detection (pretrained `ResNet50` backbone)<br>
 more information at [base Retinanet codes](https://github.com/yhenon/pytorch-retinanet)<br>
 ## Results
-Currently, this repo achieves 92.6% mAP after 80 epochs trainig with a Resnet50 backbone(see `mAP_record.txt`) <br>
+Currently, this repo achieves 92.6% mAP at face_mask val dataset after 80 epochs trainig with a Resnet50 backbone<br>
+(see `mAP_record.txt`) <br>
 ![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect0.jpg)
 ![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect1.jpg)<br>
 ![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect2.jpg)
-![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect4.jpg)
+![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect3.jpg)
 ## face_mask dataset
 链接：https://pan.baidu.com/s/1gQ1RrOiDfn94kNPO-mFYSA <br>
 提取码：cmqf<br>
