@@ -1,131 +1,153 @@
+import torch
 import numpy as np
-import os
-import time
 import argparse
-
+import time
+import os
+import csv
 import cv2
 
-import torch
-from torch.utils.data import DataLoader
-from torchvision import transforms
-
 from retinanet import model
-from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
-    UnNormalizer, Normalizer
 from train import remove_prefix
 
 
-assert torch.__version__.split('.')[0] == '1'
+def load_classes(csv_reader):
+    result = {}
 
-print('CUDA available: {}'.format(torch.cuda.is_available()))
+    for line, row in enumerate(csv_reader):
+        line += 1
+
+        try:
+            class_name, class_id = row
+        except ValueError:
+            raise(ValueError('line {}: format should be \'class_name,class_id\''.format(line)))
+        class_id = int(class_id)
+
+        if class_name in result:
+            raise ValueError('line {}: duplicate class name: \'{}\''.format(line, class_name))
+        result[class_name] = class_id
+    return result
 
 
+# Draws a caption above the box in an image
 def draw_caption(image, box, caption):
-
     b = np.array(box).astype(int)
-    if caption == 'face':
-        cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
-        cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 255), 1)
-    else:
-        cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
-        cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 255, 0), 1)
+    cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
+    cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
 
 
-def main(args=None):
-    parser = argparse.ArgumentParser(description='Simple detecting script')
+def prep_img(img):
+    rows, cols, cns = img.shape
 
-    parser.add_argument('--dataset', default='csv', help='Dataset type, must be one of csv or coco.')
-    parser.add_argument('--coco_path', help='Path to COCO directory')
-    parser.add_argument('--csv_classes', default='class2id.csv',
-                        help='Path to file containing class list (see readme)')
-    parser.add_argument('--model', default='weights/csv_retinanet50_140epochs.pt', help='Path to model (.pt) file.')
-    parser.add_argument('--img_folder', default='test/',
-                        help='Path to file containing validation annotations (optional, see readme)')
-    parser.add_argument('--save_path', default='./',
-                        help='Path to save detected images')
+    smallest_side = min(rows, cols)
 
-    parser = parser.parse_args(args)
+    # rescale the image so the smallest side is min_side
+    min_side = 608
+    max_side = 1024
+    scale = min_side / smallest_side
 
-    # randomly generate a csv file for detecting
-    if os.path.exists('test.txt'):
-        os.remove('test.txt')
-    dir = os.listdir(parser.img_folder)
-    with open('test.txt', 'a', encoding='utf-8') as f1:
-        for i in range(len(dir)):
-            path = parser.img_folder + dir[i]
-            line = path + ',' + '0' + ',' + '0' + ',' + '10' + ',' + '10' + "," + 'face' + '\n'
-            f1.write(line)
-    os.rename('test.txt', 'test.csv')
+    # check if the largest side is now greater than max_side, which can happen
+    # when images have a large aspect ratio
+    largest_side = max(rows, cols)
 
-    if parser.dataset == 'coco':
-        dataset_val = CocoDataset(parser.coco_path, set_name='train2017',
-                                  transform=transforms.Compose([Normalizer(), Resizer()]))
-    elif parser.dataset == 'csv':
-        dataset_val = CSVDataset(train_file='test.csv', class_list=parser.csv_classes,
-                                 transform=transforms.Compose([Normalizer(), Resizer()]))
-    else:
-        raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
+    if largest_side * scale > max_side:
+        scale = max_side / largest_side
 
-    sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
-    dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
+    # resize the image with the computed scale
+    img = cv2.resize(img, (int(round(cols * scale)), int(round((rows * scale)))))
+    rows, cols, cns = img.shape
 
-    checkpoint = torch.load(parser.model)
+    pad_w = 32 - rows % 32
+    pad_h = 32 - cols % 32
+
+    new_image = np.zeros((rows + pad_w, cols + pad_h, cns)).astype(np.float32)
+    new_image[:rows, :cols, :] = img.astype(np.float32)
+    img = new_image.astype(np.float32)
+    img /= 255
+    img -= [0.485, 0.456, 0.406]
+    img /= [0.229, 0.224, 0.225]
+    img = np.expand_dims(img, 0)
+    img = np.transpose(img, (0, 3, 1, 2))
+
+    return img, scale
+
+
+def detect_image(image_path, model_path, class_list):
+
+    with open(class_list, 'r') as f:
+        classes = load_classes(csv.reader(f, delimiter=','))
+
+    labels = {}
+    for key, value in classes.items():
+        labels[value] = key
+
+    checkpoint = torch.load(model_path)
     retinanet = model.resnet50(num_classes=2, pretrained=True)
     pretrained_dict = remove_prefix(checkpoint['model_state_dict'], 'module.')
     retinanet.load_state_dict(pretrained_dict)
 
-    use_gpu = True
-
-    if use_gpu:
-        if torch.cuda.is_available():
-            retinanet = retinanet.cuda()
-
     if torch.cuda.is_available():
-        retinanet = torch.nn.DataParallel(retinanet).cuda()
-    else:
-        retinanet = torch.nn.DataParallel(retinanet)
+        retinanet = retinanet.cuda()
 
+    retinanet.training = False
     retinanet.eval()
 
-    unnormalize = UnNormalizer()
+    for img_name in os.listdir(image_path):
 
-    for idx, data in enumerate(dataloader_val):
+        image = cv2.imread(os.path.join(image_path, img_name))
+        if image is None:
+            continue
+        image_orig = image.copy()
+
+        image, scale = prep_img(image_orig)
 
         with torch.no_grad():
-            st = time.time()
+
+            image = torch.from_numpy(image)
             if torch.cuda.is_available():
-                scores, classification, transformed_anchors = retinanet(data['img'].cuda().float())
-            else:
-                scores, classification, transformed_anchors = retinanet(data['img'].float())
+                image = image.cuda()
+
+            st = time.time()
+            print('image shape:{},origin shape:{}, scale:{}'.format(image.shape, image_orig.shape, scale))
+            scores, classification, transformed_anchors = retinanet(image.cuda().float())
             print('Elapsed time: {}'.format(time.time() - st))
             idxs = np.where(scores.cpu() > 0.5)
 
-            img = np.array(255 * unnormalize(data['img'][0, :, :, :])).copy()
-
-            img[img < 0] = 0
-            img[img > 255] = 255
-
-            img = np.transpose(img, (1, 2, 0))
-
-            img = cv2.cvtColor(img.astype(np.uint8), cv2.COLOR_BGR2RGB)
-
             for j in range(idxs[0].shape[0]):
                 bbox = transformed_anchors[idxs[0][j], :]
-                x1 = int(bbox[0])
-                y1 = int(bbox[1])
-                x2 = int(bbox[2])
-                y2 = int(bbox[3])
-                label_name = dataset_val.labels[int(classification[idxs[0][j]])]
-                if label_name == 'face':
-                    cv2.rectangle(img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
-                else:
-                    cv2.rectangle(img, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
 
-                draw_caption(img, (x1, y1, x2, y2), label_name)
+                x1 = int(bbox[0] / scale)
+                y1 = int(bbox[1] / scale)
+                x2 = int(bbox[2] / scale)
+                y2 = int(bbox[3] / scale)
+                label_name = labels[int(classification[idxs[0][j]])]
                 print(label_name)
+                score = scores[j]
+                caption = '{} {:.3f}'.format(label_name, score)
+                draw_caption(image_orig, (x1, y1, x2, y2), caption)
+                if label_name == 'face':
+                    cv2.rectangle(image_orig, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
+                else:
+                    cv2.rectangle(image_orig, (x1, y1), (x2, y2), color=(0, 255, 0), thickness=2)
 
-            cv2.imwrite(parser.save_path + 'detect{}.jpg'.format(idx), img)
+            cv2.imwrite(parser.save_path + 'detect_{}'.format(img_name), image_orig)
+            # cv2.imshow('detections', image_orig)
+            # cv2.waitKey(0)
+            # cv2.destroyWindow('detections')
 
 
 if __name__ == '__main__':
-    main()
+
+    parser = argparse.ArgumentParser(description='Simple script for visualizing result of training.')
+
+    parser.add_argument('--image_dir', default='test/',
+                        help='Path to directory containing images')
+    parser.add_argument('--save_path', default='results/',
+                        help='Path to save detected images')
+    parser.add_argument('--model', default='weights/csv_retinanet50_140epochs.pt',
+                        help='Path to model')
+    parser.add_argument('--class_list', default='class2id.csv',
+                        help='Path to CSV file listing class names (see README)')
+
+    parser = parser.parse_args()
+
+    detect_image(parser.image_dir, parser.model, parser.class_list)
