@@ -41,7 +41,7 @@ def main(args=None):
 
     parser.add_argument('--depth', help='Resnet depth, must be one of 18, 34, 50, 101, 152', type=int, default=50)
     parser.add_argument('--epochs', help='Number of epochs', type=int, default=20)
-    parser.add_argument('--pre_trained_model', default='weights/csv_retinanet50_120epochs.pt',
+    parser.add_argument('--pre_trained_model', default='weights/csv_retinanet50_140epochs.pt',
                         help='Pre_trained model(.pt file)')
 
     parser = parser.parse_args(args)

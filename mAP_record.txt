@@ -1,11 +1,3 @@
-csv_retinanet50_40epochs_mAP:
-face: 0.0015720010363917524
-face_mask: 0.003539709936651793
-
-csv_retinanet50_60epochs_mAP:
-face: 0.0004591451899447702
-face_mask: 0.0005725635733234127
-
 csv_retinanet50_80epochs_mAP:
 face: 0.925137750748659
 face_mask: 0.9286108571543561
@@ -17,4 +9,8 @@ face_mask: 0.9221335933014755
 csv_retinanet50_120epochs_mAP:
 face: 0.9201742568412182
 face_mask: 0.9174822863244707
+
+csv_retinanet50_140epochs_mAP:
+face: 0.912028854237817
+face_mask: 0.9136183859903529
 
