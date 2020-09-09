@@ -4,10 +4,10 @@ more information at [base Retinanet codes](https://github.com/yhenon/pytorch-ret
 ## Results
 Currently, this repo achieves 92.6% mAP at face_mask val dataset after 80 epochs trainig with a Resnet50 backbone<br>
 (see `mAP_record.txt`) <br>
-![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect0.jpg)
-![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect1.jpg)<br>
-![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect2.jpg)
-![image](https://github.com/simpletask1/Retinanet-face_mask_detection/blob/master/images/detect3.jpg)
+![image](https://github.com/simpletask1/Retinanet-face_mask_detection/tree/master/images/detect0.jpg)
+![image](https://github.com/simpletask1/Retinanet-face_mask_detection/tree/master/images/detect1.jpg)<br>
+![image](https://github.com/simpletask1/Retinanet-face_mask_detection/tree/master/images/detect2.jpg)
+![image](https://github.com/simpletask1/Retinanet-face_mask_detection/tree/master/images/detect3.jpg)
 ## face_mask dataset
 链接：https://pan.baidu.com/s/1gQ1RrOiDfn94kNPO-mFYSA <br>
 提取码：cmqf<br>
