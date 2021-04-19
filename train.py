@@ -205,12 +205,7 @@ def main(args=None):
                                                                 epoch_num + 1))
             print('Evaluating dataset...')
 
-            mAP = csv_eval.evaluate(dataset_val, retinanet)
-            with open('mAP_record.txt', 'a') as f:
-                f.write('{}_retinanet{}_{}epochs_mAP:\n'.format(parser.dataset, parser.depth, epoch_num + 1))
-                for msg in mAP:
-                    f.write(msg + '\n')
-                f.write('\n')
+            ap = csv_eval.evaluate(dataset_val, retinanet, save_path='./')
 
         scheduler.step(np.mean(epoch_loss))
 
