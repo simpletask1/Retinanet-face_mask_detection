@@ -10,8 +10,8 @@ Further training for 140 epochs but got no improvement, both pre-trained model p
 ![image](https://github.com/simpletask1/Retinanet-face_mask_detection/tree/master/images/detect_2.jpg)
 ![image](https://github.com/simpletask1/Retinanet-face_mask_detection/tree/master/images/detect_3.jpg)
 ## face_mask dataset
-链接：https://pan.baidu.com/s/1gQ1RrOiDfn94kNPO-mFYSA <br>
-提取码：cmqf<br>
+* 链接：https://pan.baidu.com/s/1pKBrwGAc-h3HO-36wAFEFA <br>
+* 提取码：qpaz<br>
 ## Pre-trained model
 Pre-trained models is available at:<br>
 * 链接：https://pan.baidu.com/s/11WEDRXtzm3dZlwJWPaB4Yg <br>
